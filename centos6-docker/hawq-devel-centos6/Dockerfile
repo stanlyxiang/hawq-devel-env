@@ -1,6 +1,6 @@
 FROM centos:6
 
-MAINTAINER Xiang Sheng <stanly.sxiang@gmail.com>
+MAINTAINER Stanly Xiang <stanly.sxiang@gmail.com>
 
 # install document with yum
 RUN sed -i 's/tsflags=nodocs//g' /etc/yum.conf
