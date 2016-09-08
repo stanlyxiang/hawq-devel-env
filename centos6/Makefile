@@ -4,6 +4,8 @@ THIS_MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 TOP_DIR := $(abspath $(dir ${THIS_MAKEFILE_PATH}))
 NDATANODES := 3
 CUR_DATANODE := 1
+DEVEL_REPOSITORY := akira7/hawq-devel
+TEST_REPOSITORY := akira7/hawq-test
 OS_VERSION := centos6
 # Do not use underscore "_" in CLUSTER_ID
 CLUSTER_ID := $(OS_VERSION)
@@ -28,13 +30,13 @@ build:
 	@make -f $(THIS_MAKEFILE_PATH) build-hawq-test-$(OS_VERSION)
 	@echo "Done!"
 
-build-hawq-devel-$(OS_VERSION): $(TOP_DIR)/hawq-devel-$(OS_VERSION)/Dockerfile
+build-hawq-devel-$(OS_VERSION): $(TOP_DIR)/hawq-devel/Dockerfile
 	@echo build hawq-devel:$(OS_VERSION) image
-	docker build -t mayjojo/hawq-devel:$(OS_VERSION) $(TOP_DIR)/hawq-devel-$(OS_VERSION)/
+	docker build -t $(DEVEL_REPOSITORY):$(OS_VERSION) $(TOP_DIR)/hawq-devel/
 
-build-hawq-test-$(OS_VERSION): $(TOP_DIR)/hawq-test-$(OS_VERSION)/Dockerfile
+build-hawq-test-$(OS_VERSION): $(TOP_DIR)/hawq-test/Dockerfile
 	@echo build hawq-test:$(OS_VERSION) image
-	docker build -t mayjojo/hawq-test:$(OS_VERSION) $(TOP_DIR)/hawq-test-$(OS_VERSION)/
+	docker build -t $(TEST_REPOSITORY):$(OS_VERSION) $(TOP_DIR)/hawq-test/
 
 create-data-container:
 	@echo create ${CLUSTER_ID}-data container
@@ -44,9 +46,9 @@ create-data-container:
 	fi
 	@if [ -z "`docker ps -a --filter="name=${CLUSTER_ID}-data$$" | grep -v CONTAINER`" ]; then \
 		if [ -z "$(LOCAL)" ]; then \
-			docker create -v /data --name=${CLUSTER_ID}-data mayjojo/hawq-devel:$(OS_VERSION) /bin/true; \
+			docker create -v /data --name=${CLUSTER_ID}-data $(DEVEL_REPOSITORY):$(OS_VERSION) /bin/true; \
 		else \
-			docker create -v $(LOCAL):/data --name=${CLUSTER_ID}-data mayjojo/hawq-devel:$(OS_VERSION) /bin/true; \
+			docker create -v $(LOCAL):/data --name=${CLUSTER_ID}-data $(DEVEL_REPOSITORY):$(OS_VERSION) /bin/true; \
 		fi \
 	else \
 		echo "${CLUSTER_ID}-data container already exist!"; \
@@ -79,7 +81,7 @@ run-namenode-container:
 	@echo "run ${CLUSTER_ID}-namenode container"
 	@if [ -z "`docker ps -a --filter="name=${CLUSTER_ID}-namenode" | grep -v CONTAINER`" ]; then \
 		docker run -itd --net=$(NETWORK) --hostname=${CLUSTER_ID}-namenode --name=${CLUSTER_ID}-namenode \
-			--volumes-from ${CLUSTER_ID}-data mayjojo/hawq-test:$(OS_VERSION); \
+			--volumes-from ${CLUSTER_ID}-data $(TEST_REPOSITORY):$(OS_VERSION); \
 	else \
 		echo "${CLUSTER_ID}-namenode container already exist!"; \
 	fi
@@ -89,7 +91,7 @@ run-datanode-container:
 	@if [ -z "`docker ps -a --filter="name=${CLUSTER_ID}-datanode$(CUR_DATANODE)" | grep -v CONTAINER`" ]; then \
 		docker run -itd --net=$(NETWORK) --hostname=${CLUSTER_ID}-datanode$(CUR_DATANODE) \
 			--name=${CLUSTER_ID}-datanode$(CUR_DATANODE) -e NAMENODE=${CLUSTER_ID}-namenode \
-		  --volumes-from ${CLUSTER_ID}-data mayjojo/hawq-test:$(OS_VERSION); \
+		  --volumes-from ${CLUSTER_ID}-data $(TEST_REPOSITORY):$(OS_VERSION); \
 	else \
 		echo "${CLUSTER_ID}-datanode$(CUR_DATANODE) container already exist!"; \
 	fi
@@ -186,8 +188,8 @@ remove-data:
 
 pull:
 	@echo latest images
-	docker pull mayjojo/hawq-devel:$(OS_VERSION)
-	docker pull mayjojo/hawq-test:$(OS_VERSION)
+	docker pull $(DEVEL_REPOSITORY):$(OS_VERSION)
+	docker pull $(TEST_REPOSITORY):$(OS_VERSION)
 
 clean:
 	@make -f $(THIS_MAKEFILE_PATH) stop 2>&1 >/dev/null || true
